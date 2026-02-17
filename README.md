@@ -1,2 +1,0 @@
-# ClassPulse
-Attendence management  system 
