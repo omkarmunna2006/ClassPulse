@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>KARE 2026</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            font-family: Arial;
+            background: #f2f4f7;
+            margin: 0;
+            text-align: center;
+        }
+
+        h1 {
+            background: #1e3a5f;
+            color: white;
+            padding: 15px;
+            margin: 0;
+        }
+
+        .container {
+            background: white;
+            width: 90%;
+            max-width: 900px;
+            margin: 25px auto;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.2);
+        }
+
+        input, select, button {
+            padding: 6px;
+            margin: 5px;
+        }
+
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            cursor: pointer;
+            padding: 6px 10px;
+        }
+
+        button:hover { background: #1d4ed8; }
+
+        .hidden { display: none; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+
+        th {
+            background: #2563eb;
+            color: white;
+        }
+
+        .green { color: green; font-weight: bold; }
+        .red { color: red; font-weight: bold; }
+
+    </style>
+</head>
+<body>
+
+<h1>KARE 2026</h1>
+
+<!-- LOGIN -->
+<div id="loginSection" class="container">
+    <h2>Login</h2>
+
+    <select id="roleSelect">
+        <option value="admin">Admin</option>
+        <option value="student">Student</option>
+    </select>
+
+    <input type="email" id="loginEmail" placeholder="Email">
+    <input type="password" id="loginPassword" placeholder="Password">
+    <button onclick="login()">Login</button>
+</div>
+
+<!-- ADMIN SECTION -->
+<div id="adminSection" class="container hidden">
+    <h2>Admin Dashboard</h2>
+
+    <h3>Add Student</h3>
+    <input type="text" id="studentName" placeholder="Student Name">
+    <input type="email" id="studentEmail" placeholder="Student Email">
+    <input type="password" id="studentPassword" placeholder="Password">
+    <button onclick="addStudent()">Add Student</button>
+
+    <h3>Students Attendance Table</h3>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Attended Classes</th>
+                <th>Not Attended</th>
+                <th>Attendance %</th>
+                <th>Present</th>
+                <th>Absent</th>
+            </tr>
+        </thead>
+        <tbody id="studentTableBody">
+        </tbody>
+    </table>
+
+    <button onclick="logout()">Logout</button>
+</div>
+
+<!-- STUDENT SECTION -->
+<div id="studentSection" class="container hidden">
+    <h2>Student Dashboard</h2>
+
+    <p id="studentInfo"></p>
+    <p id="studentPercent"></p>
+
+    <button onclick="logout()">Logout</button>
+</div>
+
+<script>
+
+/* DEFAULT ADMIN */
+if (!localStorage.getItem("admin")) {
+    localStorage.setItem("admin", JSON.stringify({
+        email: "admin@kare.edu",
+        password: "admin123"
+    }));
+}
+
+/* LOGIN */
+function login() {
+
+    let role = document.getElementById("roleSelect").value;
+    let email = document.getElementById("loginEmail").value;
+    let password = document.getElementById("loginPassword").value;
+
+    if (role === "admin") {
+
+        let admin = JSON.parse(localStorage.getItem("admin"));
+
+        if (email === admin.email && password === admin.password) {
+            document.getElementById("loginSection").classList.add("hidden");
+            document.getElementById("adminSection").classList.remove("hidden");
+            renderTable();
+        } else alert("Invalid Admin Login");
+
+    } else {
+
+        let students = JSON.parse(localStorage.getItem("students")) || [];
+        let student = students.find(s => s.email === email && s.password === password);
+
+        if (student) {
+            localStorage.setItem("currentStudent", email);
+            showStudent(student);
+        } else alert("Invalid Student Login");
+    }
+}
+
+/* ADD STUDENT */
+function addStudent() {
+
+    let students = JSON.parse(localStorage.getItem("students")) || [];
+
+    students.push({
+        name: document.getElementById("studentName").value,
+        email: document.getElementById("studentEmail").value,
+        password: document.getElementById("studentPassword").value,
+        present: 0,
+        absent: 0
+    });
+
+    localStorage.setItem("students", JSON.stringify(students));
+    renderTable();
+}
+
+/* CALCULATE PERCENT */
+function calculatePercent(present, absent) {
+    let total = present + absent;
+    if (total === 0) return 0;
+    return ((present / total) * 100).toFixed(1);
+}
+
+/* RENDER ADMIN TABLE */
+function renderTable() {
+
+    let students = JSON.parse(localStorage.getItem("students")) || [];
+    let tableBody = document.getElementById("studentTableBody");
+
+    tableBody.innerHTML = "";
+
+    students.forEach((student, index) => {
+
+        let percent = calculatePercent(student.present, student.absent);
+
+        let row = `
+            <tr>
+                <td>${student.name}</td>
+                <td>${student.present}</td>
+                <td>${student.absent}</td>
+                <td class="${percent >= 75 ? 'green' : 'red'}">
+                    ${percent}%
+                </td>
+                <td>
+                    <button onclick="markAttendance(${index}, 'present')">
+                        Present
+                    </button>
+                </td>
+                <td>
+                    <button onclick="markAttendance(${index}, 'absent')">
+                        Absent
+                    </button>
+                </td>
+            </tr>
+        `;
+
+        tableBody.innerHTML += row;
+    });
+}
+
+/* MARK ATTENDANCE */
+function markAttendance(index, type) {
+
+    let students = JSON.parse(localStorage.getItem("students")) || [];
+
+    students[index][type]++;
+
+    localStorage.setItem("students", JSON.stringify(students));
+
+    renderTable();
+}
+
+/* STUDENT DASHBOARD */
+function showStudent(student) {
+
+    document.getElementById("loginSection").classList.add("hidden");
+    document.getElementById("studentSection").classList.remove("hidden");
+
+    let percent = calculatePercent(student.present, student.absent);
+
+    document.getElementById("studentInfo").innerText =
+        "Name: " + student.name +
+        " | Present: " + student.present +
+        " | Absent: " + student.absent;
+
+    document.getElementById("studentPercent").innerText =
+        "Attendance: " + percent + "%";
+}
+
+/* LOGOUT */
+function logout() {
+    localStorage.removeItem("currentStudent");
+    location.reload();
+}
+
+</script>
+</body>
+</html>
